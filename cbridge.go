@@ -15,7 +15,6 @@ package main
 #define DUCKDB_CAPI_ENTRY_VISIBILITY __attribute__((visibility("default"), weak))
 
 DUCKDB_EXTENSION_EXTERN
-#include "duckdb_cgo_shims.h"
 
 DUCKDB_CAPI_ENTRY_VISIBILITY __attribute__((used)) void extension_set_error(struct duckdb_extension_access *access, duckdb_extension_info info, const char *msg) {
     access->set_error(info, msg);

@@ -10,7 +10,6 @@ EXTENSION_LIB_FILE := $(BUILD_DIR)/$(PLATFORM)/lib$(EXTENSION_NAME).dylib
 EXTENSION_FILE := $(BUILD_DIR)/$(PLATFORM)/$(EXTENSION_NAME).duckdb_extension
 
 GO_SRCS := $(wildcard *.go) $(wildcard duckdbext/*.go)
-SHIMS := include/duckdb_cgo_shims.h
 
 GO_LDFLAGS :=
 
@@ -25,7 +24,7 @@ all: $(EXTENSION_FILE)
 $(BUILD_DIR)/$(PLATFORM):
 	mkdir -p $(BUILD_DIR)/$(PLATFORM)
 
-$(EXTENSION_FILE): $(GO_SRCS) go.mod $(SHIMS) | $(BUILD_DIR)/$(PLATFORM)
+$(EXTENSION_FILE): $(GO_SRCS) go.mod go.sum | $(BUILD_DIR)/$(PLATFORM)
 	go build -buildmode=c-shared -ldflags="$(GO_LDFLAGS)" -o $(EXTENSION_LIB_FILE) .
 	python3 append_metadata.py \
 		--extension-name $(EXTENSION_NAME) \
