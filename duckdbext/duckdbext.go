@@ -11,6 +11,7 @@ extern duckdb_ext_api_v1 duckdb_ext_api;
 
 void scalarFunctionWrapper(duckdb_function_info info, duckdb_data_chunk input, duckdb_vector output);
 void extraInfoDestroy(void *ptr);
+void extension_set_error(struct duckdb_extension_access *access, duckdb_extension_info info, const char *msg);
 */
 import "C"
 
@@ -23,14 +24,23 @@ import (
 )
 
 type (
-	// Raw C pointers to avoid cross-package C type coupling
-	ScalarFuncImpl func(info unsafe.Pointer, input unsafe.Pointer, output unsafe.Pointer)
+	// ScalarFuncImpl is the signature for Go scalar function implementations
+	ScalarFuncImpl func(info duckdb.FunctionInfo, input duckdb.DataChunk, output duckdb.Vector)
+
+	// ExtensionInfo wraps duckdb_extension_info
+	ExtensionInfo struct {
+		Ptr unsafe.Pointer
+	}
+
+	// ExtensionAccess wraps duckdb_extension_access
+	ExtensionAccess struct {
+		Ptr unsafe.Pointer
+	}
 )
 
 // Dispatch looks up the Go function handle stored in DuckDB's extra_info and executes it.
-func Dispatch(info unsafe.Pointer, input unsafe.Pointer, output unsafe.Pointer) {
-	functionInfo := duckdb.FunctionInfo{Ptr: info}
-	extraInfo := duckdb.ScalarFunctionGetExtraInfo(functionInfo)
+func Dispatch(info duckdb.FunctionInfo, input duckdb.DataChunk, output duckdb.Vector) {
+	extraInfo := duckdb.ScalarFunctionGetExtraInfo(info)
 	if extraInfo == nil {
 		return
 	}
@@ -56,13 +66,12 @@ func DeleteHandle(ptr unsafe.Pointer) {
 
 // RegisterScalarFunction registers a scalar function with DuckDB using the C API.
 func RegisterScalarFunction(
-	conn unsafe.Pointer,
+	conn duckdb.Connection,
 	name string,
 	paramTypes []duckdb.Type,
 	returnType duckdb.Type,
 	impl ScalarFuncImpl,
 ) error {
-	connection := duckdb.Connection{Ptr: conn}
 	funcHandle := duckdb.CreateScalarFunction()
 	defer duckdb.DestroyScalarFunction(&funcHandle)
 
@@ -79,7 +88,6 @@ func RegisterScalarFunction(
 	duckdb.DestroyLogicalType(&returnLogicalType)
 
 	handle := cgo.NewHandle(impl)
-
 	handlePtr := C.malloc(C.sizeof_uintptr_t)
 	if handlePtr == nil {
 		handle.Delete()
@@ -90,10 +98,21 @@ func RegisterScalarFunction(
 	duckdb.ScalarFunctionSetExtraInfo(funcHandle, handlePtr, unsafe.Pointer(C.extraInfoDestroy))
 	duckdb.ScalarFunctionSetFunction(funcHandle, unsafe.Pointer(C.scalarFunctionWrapper))
 
-	state := duckdb.RegisterScalarFunction(connection, funcHandle)
-
+	state := duckdb.RegisterScalarFunction(conn, funcHandle)
 	if state == duckdb.StateError {
 		return errors.New("failed to register scalar function: " + name)
 	}
+
 	return nil
+}
+
+// SetExtensionError sets an error message for the extension initialization.
+func SetExtensionError(access ExtensionAccess, info ExtensionInfo, message string) {
+	errMsg := C.CString(message)
+	defer C.free(unsafe.Pointer(errMsg))
+	C.extension_set_error(
+		(*C.struct_duckdb_extension_access)(access.Ptr),
+		C.duckdb_extension_info(info.Ptr),
+		errMsg,
+	)
 }

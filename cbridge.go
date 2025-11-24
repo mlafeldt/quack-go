@@ -42,15 +42,16 @@ import "C"
 import (
 	"unsafe"
 
+	duckdb "github.com/duckdb/duckdb-go-bindings"
 	"github.com/mlafeldt/quack-go/duckdbext"
 )
 
 //export goScalarDispatch
 func goScalarDispatch(info C.duckdb_function_info, input C.duckdb_data_chunk, output C.duckdb_vector) {
 	duckdbext.Dispatch(
-		unsafe.Pointer(info),
-		unsafe.Pointer(input),
-		unsafe.Pointer(output),
+		duckdb.FunctionInfo{Ptr: unsafe.Pointer(info)},
+		duckdb.DataChunk{Ptr: unsafe.Pointer(input)},
+		duckdb.Vector{Ptr: unsafe.Pointer(output)},
 	)
 }
 
