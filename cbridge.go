@@ -25,7 +25,7 @@ package main
 
 /*
 #cgo CFLAGS: -I./include -DDUCKDB_EXTENSION_NAME=quack -DDUCKDB_BUILD_LOADABLE_EXTENSION=1
-#cgo darwin,arm64 LDFLAGS: -Wl,-undefined,dynamic_lookup
+#cgo darwin LDFLAGS: -Wl,-undefined,dynamic_lookup
 
 #include <duckdb_extension.h>
 #include <stdint.h>
